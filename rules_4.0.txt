@@ -1,0 +1,132 @@
+(deftemplate Paciente
+   (slot nombre)
+   (slot en-quirofano)
+   (slot en-espera)
+   (slot en-intervencion))
+
+(deftemplate CirujanoEnJefe
+   (slot nombre)
+   (slot en-espera))
+
+(deftemplate Cirujano2
+   (slot nombre)
+   (slot en-espera))
+
+(deftemplate EnfermeraAsistente
+   (slot nombre)
+   (slot en-espera))
+
+(deftemplate Anestesiologo
+   (slot nombre)
+   (slot en-espera))
+
+(deftemplate Evento
+   (slot nombre)
+   (slot ocurrido))
+
+(deffacts base-conocimiento
+   (Paciente (nombre Paciente1) (en-quirofano no) (en-espera si) (en-intervencion no))
+   (CirujanoEnJefe (nombre Jefe1) (en-espera si))
+   (Cirujano2 (nombre Cirujano2) (en-espera si))
+   (EnfermeraAsistente (nombre Enfermera1) (en-espera si))
+   (Anestesiologo (nombre Anestesiologo1) (en-espera si))
+   (Evento (nombre comienzo-operacion) (ocurrido no))
+   (Evento (nombre ordenar-anestesia) (ocurrido no))
+   (Evento (nombre confirmar-sedacion) (ocurrido no))
+   (Evento (nombre comenzar-intervencion) (ocurrido no))
+   (Evento (nombre solicitar-material) (ocurrido no))
+   (Evento (nombre realizar-intervencion) (ocurrido no))
+   (Evento (nombre informar-finalizacion) (ocurrido no))
+   (Evento (nombre llevar-a-recuperacion) (ocurrido no))
+)
+
+(defrule paciente-en-quirofano-en-espera-en-intervencion
+   ?p <- (Paciente (nombre ?nombre) (en-quirofano no) (en-espera si) (en-intervencion no))
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   ?e <- (EnfermeraAsistente (nombre ?eNombre) (en-espera si))
+   ?a <- (Anestesiologo (nombre ?aNombre) (en-espera si))
+   ?ev <- (Evento (nombre comienzo-operacion) (ocurrido no))
+   =>
+   (printout t "Comienza la operación." crlf)
+   (modify ?p (en-intervencion si))
+   (modify ?ev (ocurrido si))
+)
+
+(defrule ordenar-anestesia
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   ?a <- (Anestesiologo (nombre ?aNombre) (en-espera si))
+   ?p <- (Paciente (nombre ?nombre) (en-intervencion si))
+   ?ev <- (Evento (nombre ordenar-anestesia) (ocurrido no))
+   (Evento (nombre comienzo-operacion) (ocurrido si))
+   =>
+   (printout t "Cirujano en Jefe ordena al Anestesiólogo confirmar el cálculo del anestésico y aplicarlo al paciente." crlf)
+   (modify ?ev (ocurrido si))
+)
+
+(defrule confirmar-sedacion
+   ?a <- (Anestesiologo (nombre ?aNombre) (en-espera si))
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   ?p <- (Paciente (nombre ?nombre) (en-intervencion si))
+   ?ev <- (Evento (nombre confirmar-sedacion) (ocurrido no))
+   (Evento (nombre ordenar-anestesia) (ocurrido si))
+   =>
+   (printout t "Anestesiólogo confirma al Cirujano en Jefe que el paciente se encuentra sedado." crlf)
+   (modify ?ev (ocurrido si))
+)
+
+(defrule comenzar-intervencion
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   ?p <- (Paciente (nombre ?nombre) (en-intervencion si))
+   ?ev <- (Evento (nombre comenzar-intervencion) (ocurrido no))
+   (Evento (nombre confirmar-sedacion) (ocurrido si))
+   =>
+   (printout t "Cirujano en Jefe ordena al Cirujano 2 que puede comenzar la intervención." crlf)
+   (modify ?ev (ocurrido si))
+)
+
+(defrule solicitar-material
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   ?e <- (EnfermeraAsistente (nombre ?eNombre) (en-espera si))
+   ?p <- (Paciente (nombre ?nombre) (en-intervencion si))
+   ?ev <- (Evento (nombre solicitar-material) (ocurrido no))
+   (Evento (nombre comenzar-intervencion) (ocurrido si))
+   =>
+   (if (eq ?p en-reposo)
+      then
+      (printout t "Cirujano 2 solicita bisturí, pinzas, tubo de extracción a la Enfermera Asistente." crlf)
+      else
+      (printout t "Cirujano 2 solicita láser y lupa a la Enfermera Asistente." crlf)
+   )
+   (modify ?ev (ocurrido si))
+)
+
+(defrule realizar-intervencion
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   ?ev <- (Evento (nombre realizar-intervencion) (ocurrido no))
+   (Evento (nombre solicitar-material) (ocurrido si))
+   =>
+   (printout t "Cirujano 2 realiza la intervención." crlf)
+   (modify ?ev (ocurrido si))
+)
+
+(defrule informar-finalizacion
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   ?ev <- (Evento (nombre informar-finalizacion) (ocurrido no))
+   (Evento (nombre realizar-intervencion) (ocurrido si))
+   =>
+   (printout t "Cirujano 2 informa al Cirujano en Jefe sobre la finalización de la intervención." crlf)
+   (modify ?ev (ocurrido si))
+)
+
+(defrule llevar-a-recuperacion
+   ?e <- (EnfermeraAsistente (nombre ?eNombre) (en-espera si))
+   ?p <- (Paciente (nombre ?nombre) (en-intervencion si))
+   ?ev <- (Evento (nombre llevar-a-recuperacion) (ocurrido no))
+   (Evento (nombre informar-finalizacion) (ocurrido si))
+   =>
+   (printout t "Al finalizar la intervención, la Enfermera Asistente lleva al paciente a la Sala de Recuperación." crlf)
+   (modify ?ev (ocurrido si))
+)

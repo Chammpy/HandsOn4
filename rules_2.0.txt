@@ -1,0 +1,104 @@
+(deftemplate Paciente
+   (slot nombre)
+   (slot en-quirofano)
+   (slot en-espera)
+   (slot en-intervencion))
+
+(deftemplate CirujanoEnJefe
+   (slot nombre)
+   (slot en-espera))
+
+(deftemplate Cirujano2
+   (slot nombre)
+   (slot en-espera))
+
+(deftemplate EnfermeraAsistente
+   (slot nombre)
+   (slot en-espera))
+
+(deftemplate Anestesiologo
+   (slot nombre)
+   (slot en-espera))
+
+(deffacts base-conocimiento
+   (Paciente (nombre Paciente1) (en-quirofano no) (en-espera si) (en-intervencion no))
+   (CirujanoEnJefe (nombre Jefe1) (en-espera si))
+   (Cirujano2 (nombre Cirujano2) (en-espera si))
+   (EnfermeraAsistente (nombre Enfermera1) (en-espera si))
+   (Anestesiologo (nombre Anestesiologo1) (en-espera si))
+
+   (Paciente (nombre Paciente2) (en-quirofano no) (en-espera si) (en-intervencion no))
+   (CirujanoEnJefe (nombre Jefe2) (en-espera si))
+   (Cirujano2 (nombre Cirujano3) (en-espera si))
+   (EnfermeraAsistente (nombre Enfermera2) (en-espera si))
+   (Anestesiologo (nombre Anestesiologo2) (en-espera si))
+)
+
+(defrule paciente-en-quirofano-en-espera-en-intervencion
+   ?p <- (Paciente (nombre ?nombre) (en-quirofano no) (en-espera si) (en-intervencion no))
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   ?e <- (EnfermeraAsistente (nombre ?eNombre) (en-espera si))
+   ?a <- (Anestesiologo (nombre ?aNombre) (en-espera si))
+   =>
+   (printout t "Comienza la operación." crlf)
+   (modify ?p (en-intervencion si)))
+
+(defrule cirujano-2-informa-a-cirujano-en-jeve
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   =>
+   (printout t "Cirujano 2 informa a Cirujano en Jefe que puede comenzar la intervención." crlf))
+
+(defrule ordenar-anestesia
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   ?a <- (Anestesiologo (nombre ?aNombre) (en-espera si))
+   ?p <- (Paciente (nombre ?nombre) (en-intervencion si))
+   =>
+   (printout t "Cirujano en Jefe ordena al Anestesiólogo confirmar el cálculo del anestésico y aplicarlo al paciente." crlf))
+
+(defrule confirmar-sedacion
+   ?a <- (Anestesiologo (nombre ?aNombre) (en-espera si))
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   ?p <- (Paciente (nombre ?nombre) (en-intervencion si))
+   =>
+   (printout t "Anestesiólogo confirma al Cirujano en Jefe que el paciente se encuentra sedado." crlf))
+
+(defrule comenzar-intervencion
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   ?p <- (Paciente (nombre ?nombre) (en-intervencion si))
+   =>
+   (printout t "Cirujano en Jefe ordena al Cirujano 2 que puede comenzar la intervención." crlf))
+
+(defrule solicitar-material
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   ?e <- (EnfermeraAsistente (nombre ?eNombre) (en-espera si))
+   ?p <- (Paciente (nombre ?nombre) (en-intervencion si))
+   =>
+   (if (eq ?p en-reposo)
+      then
+      (printout t "Cirujano 2 solicita bisturí, pinzas, tubo de extracción a la Enfermera Asistente." crlf)
+      else
+      (printout t "Cirujano 2 solicita láser y lupa a la Enfermera Asistente." crlf)))
+
+(defrule realizar-intervencion
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   =>
+   (printout t "Cirujano 2 realiza la intervención." crlf))
+
+(defrule informar-finalizacion
+   ?c2 <- (Cirujano2 (nombre ?c2Nombre) (en-espera si))
+   ?c <- (CirujanoEnJefe (nombre ?cNombre) (en-espera si))
+   =>
+   (printout t "Cirujano 2 informa al Cirujano en Jefe sobre la finalización de la intervención." crlf))
+
+(defrule llevar-a-recuperacion
+   ?e <- (EnfermeraAsistente (nombre ?eNombre) (en-espera si))
+   ?p <- (Paciente (nombre ?nombre) (en-intervencion si))
+   (not (Cirujano2 (en-espera si))) ; Asegura que Cirujano 2 haya finalizado
+   (not (CirujanoEnJefe (en-espera si))) ; Asegura que Cirujano en Jefe haya finalizado
+   (not (Anestesiologo (en-espera si))) ; Asegura que Anestesiólogo haya finalizado
+   =>
+   (printout t "Al finalizar la intervención, la Enfermera Asistente lleva al paciente a la Sala de Recuperación." crlf)
+)
